@@ -80,12 +80,18 @@ export default function RegisterPage() {
       });
 
       if (profileError) {
+        toast.error("Error al crear el perfil. Por favor intenta de nuevo.");
         console.error("Profile creation error:", profileError);
+        setLoading(false);
+        return;
       }
 
       toast.success("¡Cuenta creada! Recibes 1.000 puntos de bienvenida 🎉");
+
+      // Wait a moment for session to sync
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       router.push("/dashboard");
-      router.refresh();
     }
 
     setLoading(false);
