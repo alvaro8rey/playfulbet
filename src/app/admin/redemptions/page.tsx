@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/Card";
-import { formatDateShort } from "@/utils";
-import { Mail, Phone, MapPin, FileText, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { RedemptionCard } from "@/components/RedemptionCard";
 
 interface Redemption {
   id: string;
@@ -24,58 +25,53 @@ interface Redemption {
   };
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const statusConfig = {
-    pending: { label: "Pendiente", icon: Clock, bg: "bg-pending/10", text: "text-pending" },
-    processing: { label: "En proceso", icon: AlertCircle, bg: "bg-blue/10", text: "text-blue" },
-    completed: { label: "Completado", icon: CheckCircle, bg: "bg-accent/10", text: "text-accent" },
-    cancelled: { label: "Cancelado", icon: AlertCircle, bg: "bg-loss/10", text: "text-loss" },
+export default function AdminRedemptionsPage() {
+  const supabase = createClient();
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchRedemptions = async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("redemptions")
+        .select(
+          `
+          id,
+          reward_id,
+          user_id,
+          nombre,
+          email,
+          telefono,
+          direccion,
+          notas,
+          status,
+          created_at,
+          reward:rewards(nombre, puntos_necesarios),
+          profile:profiles(username)
+        `
+        )
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        setRedemptions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching redemptions:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const config = statusConfig[status as keyof typeof statusConfig];
-  const Icon = config.icon;
-
-  return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${config.bg} ${config.text}`}>
-      <Icon size={14} />
-      {config.label}
-    </div>
-  );
-}
-
-export default async function AdminRedemptionsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
-
-  const { data: profile } = await supabase.from("profiles").select("is_admin").eq("user_id", user.id).single();
-  if (!profile?.is_admin) redirect("/dashboard");
-
-  const { data: redemptions } = await supabase
-    .from("redemptions")
-    .select(
-      `
-      id,
-      reward_id,
-      user_id,
-      nombre,
-      email,
-      telefono,
-      direccion,
-      notas,
-      status,
-      created_at,
-      reward:rewards(nombre, puntos_necesarios),
-      profile:profiles(username)
-    `
-    )
-    .order("created_at", { ascending: false });
+  useEffect(() => {
+    fetchRedemptions();
+  }, []);
 
   const stats = {
-    total: redemptions?.length || 0,
-    pending: redemptions?.filter((r) => r.status === "pending").length || 0,
-    processing: redemptions?.filter((r) => r.status === "processing").length || 0,
-    completed: redemptions?.filter((r) => r.status === "completed").length || 0,
+    total: redemptions.length,
+    pending: redemptions.filter((r) => r.status === "pending").length,
+    processing: redemptions.filter((r) => r.status === "processing").length,
+    completed: redemptions.filter((r) => r.status === "completed").length,
   };
 
   return (
@@ -110,63 +106,23 @@ export default async function AdminRedemptionsPage() {
         <div>
           <h2 className="font-display font-bold text-xl text-text-primary mb-4">Todos los Canjes</h2>
 
-          {(!redemptions || redemptions.length === 0) ? (
+          {loading ? (
+            <Card className="p-10 text-center">
+              <p className="text-text-muted">Cargando canjes...</p>
+            </Card>
+          ) : redemptions.length === 0 ? (
             <Card className="p-10 text-center">
               <p className="text-text-primary font-semibold mb-2">Sin canjes aún</p>
               <p className="text-text-muted text-sm">Cuando los usuarios canjeen premios, aparecerán aquí</p>
             </Card>
           ) : (
             <div className="space-y-3">
-              {redemptions.map((redemption: any) => (
-                <Card key={redemption.id} className="p-5">
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <p className="font-semibold text-text-primary">{redemption.nombre}</p>
-                          <p className="text-text-muted text-xs font-medium">@{redemption.profile?.username}</p>
-                        </div>
-                        <p className="text-accent font-bold text-sm">{redemption.reward?.nombre}</p>
-                      </div>
-                      <StatusBadge status={redemption.status} />
-                    </div>
-
-                    {/* Contact Info */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-center gap-2 text-text-secondary">
-                        <Mail size={16} className="flex-shrink-0 text-text-muted" />
-                        <span>{redemption.email}</span>
-                      </div>
-
-                      {redemption.telefono && (
-                        <div className="flex items-center gap-2 text-text-secondary">
-                          <Phone size={16} className="flex-shrink-0 text-text-muted" />
-                          <span>{redemption.telefono}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-start gap-2 text-text-secondary sm:col-span-2">
-                        <MapPin size={16} className="flex-shrink-0 text-text-muted mt-0.5" />
-                        <span>{redemption.direccion}</span>
-                      </div>
-                    </div>
-
-                    {/* Notes */}
-                    {redemption.notas && (
-                      <div className="flex items-start gap-2 bg-surface-2 rounded-lg p-3 text-sm">
-                        <FileText size={16} className="flex-shrink-0 text-text-muted mt-0.5" />
-                        <span className="text-text-secondary">{redemption.notas}</span>
-                      </div>
-                    )}
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-border text-xs text-text-muted">
-                      <span>{formatDateShort(redemption.created_at)}</span>
-                      <span>{redemption.reward?.puntos_necesarios.toLocaleString()} puntos</span>
-                    </div>
-                  </div>
-                </Card>
+              {redemptions.map((redemption) => (
+                <RedemptionCard
+                  key={redemption.id}
+                  redemption={redemption}
+                  onStatusChange={fetchRedemptions}
+                />
               ))}
             </div>
           )}
@@ -175,5 +131,3 @@ export default async function AdminRedemptionsPage() {
     </AppLayout>
   );
 }
-
-export const dynamic = "force-dynamic";
