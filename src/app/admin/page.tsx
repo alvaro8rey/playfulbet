@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { formatPoints, getSportIcon, formatDateShort, getEventStatusLabel } from "@/utils";
-import { Plus, Users, Calendar, Ticket, Gift } from "lucide-react";
+import { Plus, Users, Calendar, Ticket, Gift, Package } from "lucide-react";
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -32,14 +32,22 @@ export default async function AdminPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display font-black text-3xl text-text-primary mb-1">Panel Admin</h1>
-            <p className="text-text-muted text-sm">Gestión de eventos y resultados</p>
+            <p className="text-text-muted text-sm">Gestión de eventos, premios y resultados</p>
           </div>
-          <Link href="/admin/events/new">
-            <Button>
-              <Plus size={16} />
-              Nuevo evento
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/admin/rewards">
+              <Button variant="secondary">
+                <Package size={16} />
+                Gestionar Premios
+              </Button>
+            </Link>
+            <Link href="/admin/events/new">
+              <Button>
+                <Plus size={16} />
+                Nuevo evento
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
