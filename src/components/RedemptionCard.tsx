@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui/Card";
 import { formatDateShort } from "@/utils";
 import { Mail, Phone, MapPin, FileText, CheckCircle, Clock, AlertCircle, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
