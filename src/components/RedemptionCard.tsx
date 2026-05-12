@@ -36,6 +36,22 @@ export function RedemptionCard({ redemption, onStatusChange }: RedemptionCardPro
         .eq("id", redemption.id);
 
       if (error) throw error;
+
+      // Enviar email automático
+      try {
+        await supabase.functions.invoke("send-redemption-email", {
+          body: {
+            email: redemption.email,
+            nombre: redemption.nombre,
+            reward_nombre: redemption.reward?.nombre,
+            status: newStatus,
+            puntos: redemption.reward?.puntos_necesarios,
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending email:", emailError);
+      }
+
       toast.success(`Estado actualizado a "${statusConfig[newStatus as keyof typeof statusConfig].label}"`);
       setIsOpen(false);
       onStatusChange?.();
