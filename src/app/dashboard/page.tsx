@@ -4,10 +4,12 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatPoints, formatOdds, formatDateShort, getSportIcon, getPredictionLabel } from "@/utils";
+import { UpcomingEvents } from "@/components/dashboard/UpcomingEvents";
+import { formatPoints, formatOdds, getSportIcon, getPredictionLabel } from "@/utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { TrendingUp, Calendar, Ticket, Trophy } from "lucide-react";
+import { TrendingUp, Ticket, Trophy } from "lucide-react";
+import type { Event, Profile } from "@/types";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -154,39 +156,11 @@ export default async function DashboardPage() {
           </div>
 
           {upcomingEvents && upcomingEvents.length > 0 ? (
-            <div className="grid sm:grid-cols-2 gap-3">
-              {upcomingEvents.map((event) => (
-                <Card key={event.id} hover className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span>{getSportIcon(event.sport)}</span>
-                    <span className="text-xs text-text-muted">{event.competition}</span>
-                    <div className="flex items-center gap-1 ml-auto text-text-muted">
-                      <Calendar size={11} />
-                      <span className="text-xs">{formatDateShort(event.event_date)}</span>
-                    </div>
-                  </div>
-                  <p className="text-text-primary text-sm font-semibold text-center">
-                    {event.home_team} <span className="text-text-muted font-normal mx-2">vs</span> {event.away_team}
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <div className="flex-1 bg-surface-2 rounded-lg p-1.5 text-center border border-border">
-                      <p className="text-accent font-bold text-sm">{formatOdds(event.home_odds)}</p>
-                      <p className="text-text-muted text-[10px]">1</p>
-                    </div>
-                    {event.draw_odds && (
-                      <div className="flex-1 bg-surface-2 rounded-lg p-1.5 text-center border border-border">
-                        <p className="text-accent font-bold text-sm">{formatOdds(event.draw_odds)}</p>
-                        <p className="text-text-muted text-[10px]">X</p>
-                      </div>
-                    )}
-                    <div className="flex-1 bg-surface-2 rounded-lg p-1.5 text-center border border-border">
-                      <p className="text-accent font-bold text-sm">{formatOdds(event.away_odds)}</p>
-                      <p className="text-text-muted text-[10px]">2</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <UpcomingEvents
+              events={upcomingEvents as Event[]}
+              profile={(profile || null) as Profile | null}
+              hasActiveBet={!!activeBet}
+            />
           ) : (
             <EmptyState icon="📅" title="No hay eventos próximos" description="El administrador publicará nuevos eventos pronto." />
           )}
