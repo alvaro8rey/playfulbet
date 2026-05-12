@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/Card";
 import { RedemptionCard } from "@/components/RedemptionCard";
+import toast from "react-hot-toast";
 
 interface Redemption {
   id: string;
@@ -26,46 +28,89 @@ interface Redemption {
 }
 
 export default function AdminRedemptionsPage() {
+  const router = useRouter();
   const supabase = createClient();
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchRedemptions = async () => {
-    setLoading(true);
     try {
       const { data } = await supabase
         .from("redemptions")
-        .select(
-          `
-          id,
-          reward_id,
-          user_id,
-          nombre,
-          email,
-          telefono,
-          direccion,
-          notas,
-          status,
-          created_at,
-          reward:rewards(nombre, puntos_necesarios),
-          profile:profiles(username)
-        `
-        )
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (data) {
-        setRedemptions(data);
+        // Fetch rewards y profiles por separado
+        const enrichedData = await Promise.all(
+          (data as any[]).map(async (redemption) => {
+            const [{ data: reward }, { data: profile }] = await Promise.all([
+              supabase.from("rewards").select("nombre, puntos_necesarios").eq("id", redemption.reward_id).single(),
+              supabase.from("profiles").select("username").eq("user_id", redemption.user_id).single(),
+            ]);
+            return {
+              ...redemption,
+              reward,
+              profile,
+            };
+          })
+        );
+        setRedemptions(enrichedData as Redemption[]);
       }
     } catch (error) {
       console.error("Error fetching redemptions:", error);
+      toast.error("Error al cargar los canjes");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRedemptions();
-  }, []);
+    const checkAdminAndFetch = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push("/auth/login");
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!profile?.is_admin) {
+          router.push("/dashboard");
+          return;
+        }
+
+        setIsAdmin(true);
+        fetchRedemptions();
+
+        // Suscribirse a cambios en tiempo real
+        const channel = supabase
+          .channel("redemptions-changes")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "redemptions" },
+            () => {
+              fetchRedemptions();
+            }
+          )
+          .subscribe();
+
+        return () => {
+          channel.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Error checking admin status:", error);
+      }
+    };
+
+    checkAdminAndFetch();
+  }, [router, supabase]);
 
   const stats = {
     total: redemptions.length,
@@ -73,6 +118,16 @@ export default function AdminRedemptionsPage() {
     processing: redemptions.filter((r) => r.status === "processing").length,
     completed: redemptions.filter((r) => r.status === "completed").length,
   };
+
+  if (!isAdmin && !loading) {
+    return (
+      <AppLayout>
+        <div className="text-center py-12">
+          <p className="text-text-muted">No tienes acceso a esta página</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
