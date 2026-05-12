@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/Card";
+import { RedeemModal } from "@/components/RedeemModal";
 import { formatPoints } from "@/utils";
 import { Lock, Gift, Check } from "lucide-react";
 
@@ -14,6 +16,7 @@ interface Reward {
   descripcion: string;
   valor_euros: number;
   tipo: string;
+  imagen_url?: string;
 }
 
 const REWARDS: Reward[] = [
@@ -25,6 +28,7 @@ const REWARDS: Reward[] = [
     descripcion: "Código regalo Amazon válido en amazon.es",
     valor_euros: 5,
     tipo: "digital",
+    imagen_url: "https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop",
   },
   {
     id: 2,
@@ -34,6 +38,7 @@ const REWARDS: Reward[] = [
     descripcion: "Un mes de Spotify Premium sin anuncios",
     valor_euros: 10,
     tipo: "digital",
+    imagen_url: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=300&fit=crop",
   },
   {
     id: 3,
@@ -43,6 +48,7 @@ const REWARDS: Reward[] = [
     descripcion: "Código regalo Amazon válido en amazon.es",
     valor_euros: 10,
     tipo: "digital",
+    imagen_url: "https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop",
   },
   {
     id: 4,
@@ -52,6 +58,7 @@ const REWARDS: Reward[] = [
     descripcion: "Código regalo Amazon o saldo PayPal",
     valor_euros: 20,
     tipo: "digital",
+    imagen_url: "https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop",
   },
   {
     id: 5,
@@ -61,6 +68,7 @@ const REWARDS: Reward[] = [
     descripcion: "Código regalo Amazon o saldo PayPal 50€",
     valor_euros: 50,
     tipo: "digital",
+    imagen_url: "https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop",
   },
   {
     id: 6,
@@ -70,6 +78,7 @@ const REWARDS: Reward[] = [
     descripcion: "Balón oficial de fútbol firmado",
     valor_euros: 80,
     tipo: "fisico",
+    imagen_url: "https://images.unsplash.com/photo-1579953091162-856dc2a6fb6b?w=400&h=300&fit=crop",
   },
   {
     id: 7,
@@ -79,6 +88,7 @@ const REWARDS: Reward[] = [
     descripcion: "Consola de última generación a elegir",
     valor_euros: 500,
     tipo: "fisico",
+    imagen_url: "https://images.unsplash.com/photo-1535385789776-b51b27bfee8c?w=400&h=300&fit=crop",
   },
   {
     id: 8,
@@ -88,17 +98,37 @@ const REWARDS: Reward[] = [
     descripcion: "Ordenador gaming de alta gama",
     valor_euros: 1200,
     tipo: "fisico",
+    imagen_url: "https://images.unsplash.com/photo-1587829191301-6e9a1d30c4c7?w=400&h=300&fit=crop",
   },
 ];
 
-function RewardCard({ reward, userPoints }: { reward: Reward; userPoints: number }) {
+function RewardCard({
+  reward,
+  userPoints,
+  onRedeemClick,
+}: {
+  reward: Reward;
+  userPoints: number;
+  onRedeemClick: (reward: Reward) => void;
+}) {
   const hasEnoughPoints = userPoints >= reward.puntos_necesarios;
   const progressPercentage = Math.min((userPoints / reward.puntos_necesarios) * 100, 100);
   const pointsRemaining = Math.max(reward.puntos_necesarios - userPoints, 0);
 
   return (
-    <Card className="overflow-hidden hover:border-accent/40 transition-all">
-      <div className="p-5 space-y-4">
+    <Card className="overflow-hidden hover:border-accent/40 transition-all flex flex-col">
+      {/* Image */}
+      {reward.imagen_url && (
+        <div className="relative w-full h-48 overflow-hidden bg-surface-2">
+          <img
+            src={reward.imagen_url}
+            alt={reward.nombre}
+            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+      )}
+
+      <div className="p-5 space-y-4 flex-1 flex flex-col">
         {/* Header con badge */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
@@ -139,30 +169,30 @@ function RewardCard({ reward, userPoints }: { reward: Reward; userPoints: number
         </div>
 
         {/* Points needed or button */}
-        <div className="flex items-center justify-between pt-2 border-t border-border">
+        <div className="flex items-center justify-between pt-2 border-t border-border mt-auto">
           <div className="space-y-1">
             {!hasEnoughPoints && (
               <div className="flex items-center gap-2">
                 <Lock size={14} className="text-text-muted" />
                 <span className="text-text-muted text-xs">
-                  {formatPoints(pointsRemaining)} puntos para desbloquear
+                  {formatPoints(pointsRemaining)} puntos
                 </span>
               </div>
             )}
             {hasEnoughPoints && (
               <div className="flex items-center gap-2">
                 <Check size={14} className="text-accent" />
-                <span className="text-accent text-xs font-medium">¡Disponible para canjear!</span>
+                <span className="text-accent text-xs font-medium">¡Disponible!</span>
               </div>
             )}
           </div>
 
           <button
-            disabled
-            title="Próximamente"
+            onClick={() => onRedeemClick(reward)}
+            disabled={!hasEnoughPoints}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               hasEnoughPoints
-                ? "bg-accent/15 text-accent cursor-not-allowed"
+                ? "bg-accent text-background hover:bg-accent-dim"
                 : "bg-surface-2 text-text-muted cursor-not-allowed"
             }`}
           >
@@ -175,7 +205,8 @@ function RewardCard({ reward, userPoints }: { reward: Reward; userPoints: number
 }
 
 export default function RewardsPage() {
-  const { profile } = useProfile();
+  const { profile, refetch } = useProfile();
+  const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const userPoints = profile?.points || 0;
 
   // Calcular el próximo premio
@@ -184,6 +215,10 @@ export default function RewardsPage() {
 
   const digitalRewards = REWARDS.filter((r) => r.categoria === "digital");
   const fisicosRewards = REWARDS.filter((r) => r.categoria === "fisico");
+
+  const handleRedeemSuccess = () => {
+    refetch();
+  };
 
   return (
     <AppLayout>
@@ -242,7 +277,12 @@ export default function RewardsPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {digitalRewards.map((reward) => (
-              <RewardCard key={reward.id} reward={reward} userPoints={userPoints} />
+              <RewardCard
+                key={reward.id}
+                reward={reward}
+                userPoints={userPoints}
+                onRedeemClick={setSelectedReward}
+              />
             ))}
           </div>
         </div>
@@ -255,10 +295,25 @@ export default function RewardsPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fisicosRewards.map((reward) => (
-              <RewardCard key={reward.id} reward={reward} userPoints={userPoints} />
+              <RewardCard
+                key={reward.id}
+                reward={reward}
+                userPoints={userPoints}
+                onRedeemClick={setSelectedReward}
+              />
             ))}
           </div>
         </div>
+
+        {/* Redeem Modal */}
+        {selectedReward && (
+          <RedeemModal
+            isOpen={!!selectedReward}
+            onClose={() => setSelectedReward(null)}
+            reward={selectedReward}
+            onSuccess={handleRedeemSuccess}
+          />
+        )}
       </div>
     </AppLayout>
   );

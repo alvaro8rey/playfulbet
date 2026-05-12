@@ -104,7 +104,27 @@ CREATE TABLE IF NOT EXISTS public.rewards (
   descripcion TEXT NOT NULL,
   valor_euros DECIMAL(10,2) NOT NULL,
   tipo TEXT NOT NULL,
+  imagen_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Redemptions table (canjes de premios)
+CREATE TYPE IF NOT EXISTS public.redemption_status AS ENUM (
+  'pending', 'processing', 'completed', 'cancelled'
+);
+
+CREATE TABLE IF NOT EXISTS public.redemptions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  reward_id INTEGER REFERENCES public.rewards(id) ON DELETE RESTRICT NOT NULL,
+  status public.redemption_status NOT NULL DEFAULT 'pending',
+  nombre TEXT NOT NULL,
+  email TEXT NOT NULL,
+  telefono TEXT,
+  direccion TEXT,
+  notas TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
 -- =====================================================
@@ -120,6 +140,10 @@ CREATE INDEX IF NOT EXISTS idx_bets_event_id ON public.bets(event_id);
 CREATE INDEX IF NOT EXISTS idx_bets_status ON public.bets(status);
 CREATE INDEX IF NOT EXISTS idx_rewards_puntos_necesarios ON public.rewards(puntos_necesarios);
 CREATE INDEX IF NOT EXISTS idx_rewards_categoria ON public.rewards(categoria);
+CREATE INDEX IF NOT EXISTS idx_redemptions_user_id ON public.redemptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_redemptions_reward_id ON public.redemptions(reward_id);
+CREATE INDEX IF NOT EXISTS idx_redemptions_status ON public.redemptions(status);
+CREATE INDEX IF NOT EXISTS idx_redemptions_created_at ON public.redemptions(created_at DESC);
 
 -- =====================================================
 -- UPDATED_AT TRIGGER
@@ -141,6 +165,10 @@ CREATE TRIGGER on_event_updated
   BEFORE UPDATE ON public.events
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
+CREATE TRIGGER on_redemption_updated
+  BEFORE UPDATE ON public.redemptions
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
 -- =====================================================
 -- ROW LEVEL SECURITY
 -- =====================================================
@@ -150,6 +178,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rewards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.redemptions ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- PROFILES POLICIES
@@ -243,6 +272,40 @@ CREATE POLICY "Admins can manage rewards"
   );
 
 -- =====================================================
+-- REDEMPTIONS POLICIES
+-- =====================================================
+
+-- Users can view their own redemptions
+CREATE POLICY "Users can view own redemptions"
+  ON public.redemptions FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Admins can view all redemptions
+CREATE POLICY "Admins can view all redemptions"
+  ON public.redemptions FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE user_id = auth.uid() AND is_admin = true
+    )
+  );
+
+-- Users can create their own redemptions
+CREATE POLICY "Users can create redemptions"
+  ON public.redemptions FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Admins can update redemptions (to change status)
+CREATE POLICY "Admins can update redemptions"
+  ON public.redemptions FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE user_id = auth.uid() AND is_admin = true
+    )
+  );
+
+-- =====================================================
 -- ADMIN SETUP
 -- =====================================================
 
@@ -253,17 +316,17 @@ CREATE POLICY "Admins can manage rewards"
 -- SAMPLE DATA (optional - remove in production)
 -- =====================================================
 
--- Rewards data
-INSERT INTO public.rewards (id, puntos_necesarios, categoria, nombre, descripcion, valor_euros, tipo)
+-- Rewards data with images
+INSERT INTO public.rewards (id, puntos_necesarios, categoria, nombre, descripcion, valor_euros, tipo, imagen_url)
 VALUES
-  (1, 15000, 'digital', 'Tarjeta Amazon 5€', 'Código regalo Amazon válido en amazon.es', 5.00, 'digital'),
-  (2, 25000, 'digital', 'Spotify Premium 1 mes', 'Un mes de Spotify Premium sin anuncios', 10.00, 'digital'),
-  (3, 40000, 'digital', 'Tarjeta Amazon 10€', 'Código regalo Amazon válido en amazon.es', 10.00, 'digital'),
-  (4, 75000, 'digital', 'Tarjeta Amazon 20€', 'Código regalo Amazon o saldo PayPal', 20.00, 'digital'),
-  (5, 150000, 'digital', 'Tarjeta Amazon 50€', 'Código regalo Amazon o saldo PayPal 50€', 50.00, 'digital'),
-  (6, 300000, 'fisico', 'Balón Oficial', 'Balón oficial de fútbol firmado', 80.00, 'fisico'),
-  (7, 600000, 'fisico', 'PS5 / Xbox Series X', 'Consola de última generación a elegir', 500.00, 'fisico'),
-  (8, 1000000, 'fisico', 'PC Gaming', 'Ordenador gaming de alta gama', 1200.00, 'fisico')
+  (1, 15000, 'digital', 'Tarjeta Amazon 5€', 'Código regalo Amazon válido en amazon.es', 5.00, 'digital', 'https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop'),
+  (2, 25000, 'digital', 'Spotify Premium 1 mes', 'Un mes de Spotify Premium sin anuncios', 10.00, 'digital', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=300&fit=crop'),
+  (3, 40000, 'digital', 'Tarjeta Amazon 10€', 'Código regalo Amazon válido en amazon.es', 10.00, 'digital', 'https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop'),
+  (4, 75000, 'digital', 'Tarjeta Amazon 20€', 'Código regalo Amazon o saldo PayPal', 20.00, 'digital', 'https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop'),
+  (5, 150000, 'digital', 'Tarjeta Amazon 50€', 'Código regalo Amazon o saldo PayPal 50€', 50.00, 'digital', 'https://images.unsplash.com/photo-1523904457850-c49b6b3e4eb0?w=400&h=300&fit=crop'),
+  (6, 300000, 'fisico', 'Balón Oficial', 'Balón oficial de fútbol firmado', 80.00, 'fisico', 'https://images.unsplash.com/photo-1579953091162-856dc2a6fb6b?w=400&h=300&fit=crop'),
+  (7, 600000, 'fisico', 'PS5 / Xbox Series X', 'Consola de última generación a elegir', 500.00, 'fisico', 'https://images.unsplash.com/photo-1535385789776-b51b27bfee8c?w=400&h=300&fit=crop'),
+  (8, 1000000, 'fisico', 'PC Gaming', 'Ordenador gaming de alta gama', 1200.00, 'fisico', 'https://images.unsplash.com/photo-1587829191301-6e9a1d30c4c7?w=400&h=300&fit=crop')
 ON CONFLICT DO NOTHING;
 
 -- Sample events (uncomment to use)
