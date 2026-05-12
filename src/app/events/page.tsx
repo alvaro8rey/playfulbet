@@ -127,7 +127,7 @@ export default function EventsPage() {
         )}
 
         {/* Events list */}
-        {loading ? (
+        {loading || !profile ? (
           <PageLoader />
         ) : events.length === 0 ? (
           <EmptyState
@@ -141,7 +141,7 @@ export default function EventsPage() {
               <EventCard
                 key={event.id}
                 event={event}
-                onBet={profile ? (e, p) => setSelectedBet({ event: e, prediction: p }) : undefined}
+                onBet={(e, p) => setSelectedBet({ event: e, prediction: p })}
                 hasActiveBet={!!activeBet}
               />
             ))}
