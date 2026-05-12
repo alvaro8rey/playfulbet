@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { formatPoints, getSportIcon, formatDateShort, getEventStatusLabel } from "@/utils";
-import { Plus, Users, Calendar, Ticket } from "lucide-react";
+import { Plus, Users, Calendar, Ticket, Gift } from "lucide-react";
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -15,14 +15,16 @@ export default async function AdminPage() {
   const { data: profile } = await supabase.from("profiles").select("is_admin").eq("user_id", user.id).single();
   if (!profile?.is_admin) redirect("/dashboard");
 
-  const [{ data: events }, { data: bets }, { count: usersCount }] = await Promise.all([
+  const [{ data: events }, { data: bets }, { count: usersCount }, { data: redemptions }] = await Promise.all([
     supabase.from("events").select("*").order("event_date", { ascending: false }).limit(10),
     supabase.from("bets").select("id, status").neq("status", "cancelled"),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("redemptions").select("id, status").order("created_at", { ascending: false }).limit(100),
   ]);
 
   const pendingEvents = events?.filter((e) => e.status === "pending").length || 0;
   const pendingBets = bets?.filter((b) => b.status === "pending").length || 0;
+  const pendingRedemptions = redemptions?.filter((r) => r.status === "pending").length || 0;
 
   return (
     <AppLayout>
@@ -41,7 +43,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users size={16} className="text-blue" />
@@ -69,6 +71,13 @@ export default async function AdminPage() {
               <span className="text-text-muted text-xs">Apuestas activas</span>
             </div>
             <p className="text-text-primary font-bold text-2xl">{pendingBets}</p>
+          </Card>
+          <Card className="p-4">
+            <Link href="/admin/redemptions" className="flex items-center gap-2 mb-2 hover:text-accent transition">
+              <Gift size={16} className="text-gold" />
+              <span className="text-text-muted text-xs">Canjes</span>
+            </Link>
+            <p className="text-text-primary font-bold text-2xl">{pendingRedemptions}</p>
           </Card>
         </div>
 
