@@ -91,6 +91,22 @@ CREATE UNIQUE INDEX idx_one_pending_bet_per_user
   ON public.bets (user_id)
   WHERE status = 'pending';
 
+-- Rewards table
+CREATE TYPE IF NOT EXISTS public.reward_category AS ENUM (
+  'digital', 'fisico'
+);
+
+CREATE TABLE IF NOT EXISTS public.rewards (
+  id INTEGER PRIMARY KEY,
+  puntos_necesarios INTEGER NOT NULL,
+  categoria public.reward_category NOT NULL,
+  nombre TEXT NOT NULL,
+  descripcion TEXT NOT NULL,
+  valor_euros DECIMAL(10,2) NOT NULL,
+  tipo TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
 -- =====================================================
 -- INDEXES
 -- =====================================================
@@ -102,6 +118,8 @@ CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(event_date);
 CREATE INDEX IF NOT EXISTS idx_bets_user_id ON public.bets(user_id);
 CREATE INDEX IF NOT EXISTS idx_bets_event_id ON public.bets(event_id);
 CREATE INDEX IF NOT EXISTS idx_bets_status ON public.bets(status);
+CREATE INDEX IF NOT EXISTS idx_rewards_puntos_necesarios ON public.rewards(puntos_necesarios);
+CREATE INDEX IF NOT EXISTS idx_rewards_categoria ON public.rewards(categoria);
 
 -- =====================================================
 -- UPDATED_AT TRIGGER
@@ -131,6 +149,7 @@ CREATE TRIGGER on_event_updated
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rewards ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- PROFILES POLICIES
@@ -205,6 +224,25 @@ CREATE POLICY "Admins can update bets"
   );
 
 -- =====================================================
+-- REWARDS POLICIES
+-- =====================================================
+
+-- Everyone can view rewards
+CREATE POLICY "Rewards are viewable by everyone"
+  ON public.rewards FOR SELECT
+  USING (true);
+
+-- Only admins can manage rewards
+CREATE POLICY "Admins can manage rewards"
+  ON public.rewards FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE user_id = auth.uid() AND is_admin = true
+    )
+  );
+
+-- =====================================================
 -- ADMIN SETUP
 -- =====================================================
 
@@ -214,6 +252,19 @@ CREATE POLICY "Admins can update bets"
 -- =====================================================
 -- SAMPLE DATA (optional - remove in production)
 -- =====================================================
+
+-- Rewards data
+INSERT INTO public.rewards (id, puntos_necesarios, categoria, nombre, descripcion, valor_euros, tipo)
+VALUES
+  (1, 15000, 'digital', 'Tarjeta Amazon 5€', 'Código regalo Amazon válido en amazon.es', 5.00, 'digital'),
+  (2, 25000, 'digital', 'Spotify Premium 1 mes', 'Un mes de Spotify Premium sin anuncios', 10.00, 'digital'),
+  (3, 40000, 'digital', 'Tarjeta Amazon 10€', 'Código regalo Amazon válido en amazon.es', 10.00, 'digital'),
+  (4, 75000, 'digital', 'Tarjeta Amazon 20€', 'Código regalo Amazon o saldo PayPal', 20.00, 'digital'),
+  (5, 150000, 'digital', 'Tarjeta Amazon 50€', 'Código regalo Amazon o saldo PayPal 50€', 50.00, 'digital'),
+  (6, 300000, 'fisico', 'Balón Oficial', 'Balón oficial de fútbol firmado', 80.00, 'fisico'),
+  (7, 600000, 'fisico', 'PS5 / Xbox Series X', 'Consola de última generación a elegir', 500.00, 'fisico'),
+  (8, 1000000, 'fisico', 'PC Gaming', 'Ordenador gaming de alta gama', 1200.00, 'fisico')
+ON CONFLICT DO NOTHING;
 
 -- Sample events (uncomment to use)
 /*
