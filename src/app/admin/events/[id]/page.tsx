@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
 import type { Event, BetResult } from "@/types";
+import { resolveEvent } from "../actions";
 
 const RESULT_OPTIONS = [
   { value: "home", label: "Victoria Local (1)" },
@@ -106,55 +107,18 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       const homeScore = form.home_score !== "" ? parseInt(form.home_score) : null;
       const awayScore = form.away_score !== "" ? parseInt(form.away_score) : null;
 
-      // Update event
-      const { error: eventError } = await supabase.from("events").update({
-        status: "finished",
-        result,
-        home_score: homeScore,
-        away_score: awayScore,
-      }).eq("id", id);
+      const response = await resolveEvent(id, result, homeScore, awayScore);
 
-      if (eventError) throw eventError;
-
-      // Get all pending bets on this event
-      const { data: bets } = await supabase
-        .from("bets")
-        .select("*, profile:profiles(*)")
-        .eq("event_id", id)
-        .eq("status", "pending");
-
-      if (bets && bets.length > 0) {
-        for (const bet of bets) {
-          const won = bet.prediction === result;
-
-          // Update bet status
-          await supabase.from("bets").update({
-            status: won ? "won" : "lost",
-            resolved_at: new Date().toISOString(),
-          }).eq("id", bet.id);
-
-          // Update user points
-          const profile = bet.profile as { user_id: string; points: number; won_bets: number; lost_bets: number } | null;
-          if (profile) {
-            if (won) {
-              await supabase.from("profiles").update({
-                points: profile.points + bet.potential_win,
-                won_bets: profile.won_bets + 1,
-              }).eq("user_id", bet.user_id);
-            } else {
-              await supabase.from("profiles").update({
-                lost_bets: profile.lost_bets + 1,
-              }).eq("user_id", bet.user_id);
-            }
-          }
-        }
+      if (!response.success) {
+        toast.error(response.message);
+        setResolving(false);
+        return;
       }
 
-      toast.success(`Evento resuelto: ${bets?.length || 0} apuestas procesadas ✓`);
+      toast.success(response.message);
       router.push("/admin");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Error al resolver");
-    } finally {
       setResolving(false);
     }
   };
