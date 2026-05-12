@@ -109,7 +109,7 @@ function RewardCard({ reward, userPoints }: { reward: Reward; userPoints: number
             className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap flex-shrink-0 ${
               reward.categoria === "digital"
                 ? "bg-blue/15 text-blue"
-                : "bg-purple/15 text-purple"
+                : "bg-gold/15 text-gold"
             }`}
           >
             {reward.categoria === "digital" ? "Digital" : "Físico"}
@@ -126,7 +126,7 @@ function RewardCard({ reward, userPoints }: { reward: Reward; userPoints: number
           {/* Progress bar */}
           <div className="w-full h-2 bg-surface-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-accent to-accent-light transition-all duration-500"
+              className="h-full bg-gradient-to-r from-accent to-accent-dim transition-all duration-500"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
