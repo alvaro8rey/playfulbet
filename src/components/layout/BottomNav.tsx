@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useActiveBet } from "@/hooks/useActiveBet";
 import { cn } from "@/utils";
-import { LayoutDashboard, Calendar, Ticket, Trophy, User } from "lucide-react";
+import { LayoutDashboard, Calendar, Ticket, Trophy, Gift, User } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Inicio" },
   { href: "/events", icon: Calendar, label: "Eventos" },
   { href: "/bets", icon: Ticket, label: "Apuestas" },
   { href: "/leaderboard", icon: Trophy, label: "Ranking" },
+  { href: "/rewards", icon: Gift, label: "Premios" },
   { href: "/profile", icon: User, label: "Perfil" },
 ];
 

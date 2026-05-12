@@ -11,6 +11,7 @@ import {
   Calendar,
   Ticket,
   Trophy,
+  Gift,
   User,
   Settings,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/events", icon: Calendar, label: "Eventos" },
   { href: "/bets", icon: Ticket, label: "Mis Apuestas" },
   { href: "/leaderboard", icon: Trophy, label: "Clasificación" },
+  { href: "/rewards", icon: Gift, label: "Premios" },
   { href: "/profile", icon: User, label: "Perfil" },
 ];
 
