@@ -10,6 +10,7 @@ export function useProfile() {
   const supabase = createClient();
 
   const fetchProfile = useCallback(async () => {
+    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
@@ -19,7 +20,9 @@ export function useProfile() {
       .eq("user_id", user.id)
       .single();
 
-    setProfile(data);
+    if (data) {
+      setProfile(data);
+    }
     setLoading(false);
   }, [supabase]);
 
